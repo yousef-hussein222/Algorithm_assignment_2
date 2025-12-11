@@ -26,20 +26,54 @@ class ConcretePlayerTable : public PlayerTable {
 private:
     // TODO: Define your data structures here
     // Hint: You'll need a hash table with double hashing collision resolution
-
+    const int TABLE_SIZE = 101;
+    vector<pair<int, string>> table;
 public:
     ConcretePlayerTable() {
         // TODO: Initialize your hash table
+        table.resize(TABLE_SIZE);
+        for (int i = 0; i < TABLE_SIZE; i++) {
+            table[i].first = -1;
+        }
+    }
+
+    int h1(const int key) const {
+        return key % TABLE_SIZE;
+    }
+
+    static int h2(const int key) {
+        return 7 - (key % 7);
     }
 
     void insert(int playerID, string name) override {
         // TODO: Implement double hashing insert
         // Remember to handle collisions using h1(key) + i * h2(key)
+
+        for (int i = 0; i < TABLE_SIZE;i++) {
+            const int idx = (h1(playerID) + i * h2(playerID)) % TABLE_SIZE;
+            if (table[idx].first == -1) {
+                table[idx].first = playerID;
+                table[idx].second = name;
+                return;
+            }
+        }
     }
 
     string search(int playerID) override {
         // TODO: Implement double hashing search
         // Return "" if player not found
+
+        for (int i = 0;i < TABLE_SIZE; i++) {
+            const int idx = (h1(playerID) + i * h2(playerID)) % TABLE_SIZE;
+            if (table[idx].first == playerID) {
+                return table[idx].second;
+            }
+
+            if (table[idx].first == -1) {
+                break;
+            }
+        }
+
         return "";
     }
 };
@@ -315,9 +349,50 @@ long long WorldNavigator::minBribeCost(int n, int m, long long goldRate, long lo
     // roadData[i] = {u, v, goldCost, silverCost}
     // Total cost = goldCost * goldRate + silverCost * silverRate
     // Return -1 if graph cannot be fully connected
+
+    vector<vector<pair<long long, int>>> adj(n);
+
+    for (auto &r : roadData) {
+        int u = r[0], v = r[1];
+        long long goldCost = r[2], silverCost = r[3];
+
+        long long totalCost = goldCost * goldRate + silverCost * silverRate;
+
+        adj[u].push_back({totalCost, v});
+        adj[v].push_back({totalCost, u});
+    }
+
+    vector<bool> mst(n, false);
+    priority_queue<pair<long long, int>, vector<pair<long long, int>>, greater<pair<long long, int>>> pq;
+    pq.push({0, 0});
+    long long totalCost = 0;
+    int visited = 0;
+    while (!pq.empty()) {
+        long long w = pq.top().first;
+        int u = pq.top().second;
+        pq.pop();
+
+        if (mst[u]) continue;
+
+        mst[u] = true;
+
+        totalCost += w;
+        visited++;
+
+        for (auto &p : adj[u]) {
+            int v = p.second;
+            long long cost = p.first;
+            if (!mst[v])
+                pq.push({cost, v});
+        }
+    }
+
+    if (visited == n) {
+        return totalCost;
+    }
+
     return -1;
 }
-
 string WorldNavigator::sumMinDistancesBinary(int n, vector<vector<int>>& roads) {
     // TODO: Implement All-Pairs Shortest Path (Floyd-Warshall)
     // Sum all shortest distances between unique pairs (i < j)
