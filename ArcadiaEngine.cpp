@@ -301,6 +301,103 @@ private:
         y->left = x;
         x->parent = y;
     }
+    RBNode* search(RBNode* node, int id) {
+        while (node) {
+            if (id < node->id) node = node->left;
+            else if (id > node->id) node = node->right;
+            else return node;
+        }
+        return nullptr;
+    }
+
+    RBNode* minimum(RBNode* node) {
+        while (node && node->left) node = node->left;
+        return node;
+    }
+
+    RBNode* successor(RBNode* node) {
+        if (!node) return nullptr;
+        if (node->right) return minimum(node->right);
+        RBNode* p = node->parent;
+        while (p && node == p->right) {
+            node = p;
+            p = p->parent;
+        }
+        return p;
+    }
+
+        // -------------------- delete fixup --------------------
+    void deleteFixup(RBNode* node) {
+    while (node != root && node->color == 'B') {
+        RBNode* parentNode = node->parent;
+
+        if (parentNode && node == parentNode->left) {
+            RBNode* siblingNode = parentNode->right;
+
+            if (siblingNode && siblingNode->color == 'R') {
+                // Case 1: sibling is red
+                siblingNode->color = 'B';
+                parentNode->color = 'R';
+                leftRotate(parentNode);
+                siblingNode = parentNode->right;
+            }
+
+            if ((!siblingNode || !siblingNode->left || siblingNode->left->color == 'B') &&
+                (!siblingNode || !siblingNode->right || siblingNode->right->color == 'B')) {
+                // Case 2: sibling black, both children black
+                if (siblingNode) siblingNode->color = 'R';
+                node = parentNode;
+            } else {
+                if (!siblingNode || !siblingNode->right || siblingNode->right->color == 'B') {
+                    // Case 3: sibling black, left child red, right child black
+                    if (siblingNode && siblingNode->left) siblingNode->left->color = 'B';
+                    if (siblingNode) siblingNode->color = 'R';
+                    if (siblingNode) rightRotate(siblingNode);
+                    siblingNode = parentNode->right;
+                }
+                // Case 4: sibling black, right child red
+                if (siblingNode) siblingNode->color = parentNode->color;
+                parentNode->color = 'B';
+                if (siblingNode && siblingNode->right) siblingNode->right->color = 'B';
+                leftRotate(parentNode);
+                node = root;
+            }
+        } else if (parentNode) { //symmetric: node is right child
+            RBNode* siblingNode = parentNode->left;
+
+            if (siblingNode && siblingNode->color == 'R') {
+                // Case 1 mirror: sibling red
+                siblingNode->color = 'B';
+                parentNode->color = 'R';
+                rightRotate(parentNode);
+                siblingNode = parentNode->left;
+            }
+
+            if ((!siblingNode || !siblingNode->left || siblingNode->left->color == 'B') &&
+                (!siblingNode || !siblingNode->right || siblingNode->right->color == 'B')) {
+                // Case 2 mirror: sibling black, both children black
+                if (siblingNode) siblingNode->color = 'R';
+                node = parentNode;
+            } else {
+                if (!siblingNode || !siblingNode->left || siblingNode->left->color == 'B') {
+                    // Case 3 mirror: sibling black, right child red, left child black
+                    if (siblingNode && siblingNode->right) siblingNode->right->color = 'B';
+                    if (siblingNode) siblingNode->color = 'R';
+                    if (siblingNode) leftRotate(siblingNode);
+                    siblingNode = parentNode->left;
+                }
+                // Case 4 mirror: sibling black, left child red
+                if (siblingNode) siblingNode->color = parentNode->color;
+                parentNode->color = 'B';
+                if (siblingNode && siblingNode->left) siblingNode->left->color = 'B';
+                rightRotate(parentNode);
+                node = root;
+            }
+        }
+    }
+    if (node) node->color = 'B';
+}
+
 public:
     ConcreteAuctionTree() {
         root = nullptr;
@@ -380,8 +477,47 @@ public:
     }
 
     void deleteItem(int itemID) override {
-        // TODO: Implement Red-Black Tree deletion
-        // This is complex - handle all cases carefully
+        RBNode* nodeToDelete = search(root, itemID);
+        if (!nodeToDelete) return;
+
+        RBNode* nodeToSplice = nodeToDelete;
+        RBNode* childNode = nullptr;
+        char originalColor = nodeToSplice->color;
+        bool usedTemporaryNIL = false;
+
+        if (nodeToDelete->left && nodeToDelete->right) {
+            nodeToSplice = successor(nodeToDelete);
+            nodeToDelete->id = nodeToSplice->id;
+            nodeToDelete->price = nodeToSplice->price;
+            originalColor = nodeToSplice->color;
+        }
+
+        childNode = nodeToSplice->left ? nodeToSplice->left : nodeToSplice->right;
+
+        if (!childNode) {
+            childNode = new RBNode(0, 0, 'B');
+            usedTemporaryNIL = true;
+        }
+
+        if (!nodeToSplice->parent) root = childNode;
+        else if (nodeToSplice == nodeToSplice->parent->left)
+            nodeToSplice->parent->left = childNode;
+        else
+            nodeToSplice->parent->right = childNode;
+
+        if (childNode) childNode->parent = nodeToSplice->parent;
+
+        if (originalColor == 'B') deleteFixup(childNode);
+
+        if (usedTemporaryNIL && childNode) {
+            if (childNode->parent) {
+                if (childNode == childNode->parent->left) childNode->parent->left = nullptr;
+                else childNode->parent->right = nullptr;
+            }
+            delete childNode;
+        }
+
+        delete nodeToSplice;
     }
 };
 
