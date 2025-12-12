@@ -83,25 +83,148 @@ public:
 class ConcreteLeaderboard : public Leaderboard {
 private:
     // TODO: Define your skip list node structure and necessary variables
-    // Hint: You'll need nodes with multiple forward pointers
-
-public:
-    ConcreteLeaderboard() {
-        // TODO: Initialize your skip list
+    struct  Node {
+        int score;
+        int PlayerID;
+        int level ;
+        Node ** forward;
+        Node(int PID,int sc,int l ) {
+            PlayerID =PID;
+            score = sc;
+            level = l;
+            forward = new Node * [ l+  1];
+            for(int i = 0; i<= l;i++) {
+                forward[i] = nullptr;
+            }
+        }
+        ~Node() {
+            delete[] forward;
+        }
+    };
+    int maxLevel;
+    int currentLevel;
+    Node * sentinel;
+    int randomLevel() {
+        int lvl = 0;
+        while ((rand() % 2) && lvl < maxLevel) lvl++;
+        return lvl;
     }
 
+public:
+    ConcreteLeaderboard(int maxL = 6) {
+        srand((unsigned)time(nullptr));
+        maxLevel = maxL;
+        currentLevel = 0;
+        sentinel = new Node(-1, INT_MAX, maxL);
+    }
+
+    //destructor
+    ~ConcreteLeaderboard() {
+        Node* cur = sentinel->forward[0];
+        while (cur) {
+            Node* nxt = cur->forward[0];
+            delete cur;
+            cur = nxt;
+        }
+        delete sentinel;
+    }
+    //helper function
+    int checkIfPlayerExist(int id) {
+        Node* cur = sentinel->forward[0];
+        while (cur != nullptr) {
+            if (cur->PlayerID == id)
+                return cur->score;
+            cur = cur->forward[0];
+        }
+        return -1;
+    }
     void addScore(int playerID, int score) override {
-        // TODO: Implement skip list insertion
-        // Remember to maintain descending order by score
+        Node * cur = sentinel;
+        vector<Node *>path(maxLevel + 1 ,nullptr);
+        int checkPlayerExist = checkIfPlayerExist(playerID);
+
+        if(checkPlayerExist !=-1) {
+            removePlayer(playerID);
+        }
+        for(int lvl = maxLevel ;lvl>= 0 ; lvl --) {
+            while (cur->forward[lvl] && (cur->forward[lvl]->score > score ||
+       (cur->forward[lvl]->score == score && cur->forward[lvl]->PlayerID < playerID))) {
+                cur = cur->forward[lvl] ;
+       }
+            path[lvl] = cur;
+        }
+
+        int numoflevel = randomLevel();
+
+        Node * newNode =new Node(playerID,score,numoflevel);
+        for(int i = 0; i<= numoflevel; i++) {
+            newNode->forward[i] = path[i]->forward[i];
+            path[i]->forward[i] = newNode;
+        }
+        if (numoflevel > currentLevel) currentLevel = numoflevel;
     }
 
     void removePlayer(int playerID) override {
-        // TODO: Implement skip list deletion
+        // Find the node by ID and the time is O(n)
+        Node* target = sentinel->forward[0];
+        while (target && target->PlayerID != playerID)
+            target = target->forward[0];
+        if (!target) {
+            cout << "Not found any player with id: " << playerID << endl;
+            return;
+        }
+
+        int score = target->score;
+        vector<Node*> path(maxLevel + 1, nullptr);
+        Node* cur = sentinel;
+        //get the node and ist forward path
+        for (int lvl = maxLevel; lvl >= 0; lvl--) {
+            while (cur->forward[lvl] &&(cur->forward[lvl]->score > score ||(cur->forward[lvl]->score == score &&cur->forward[lvl]->PlayerID < playerID)))
+            {
+                cur = cur->forward[lvl];
+            }
+            path[lvl] = cur;
+        }
+        Node* realTarget = path[0]->forward[0];
+
+        // delete node
+        if (realTarget && realTarget->PlayerID == playerID) {
+            for (int i = 0; i <= realTarget->level; i++) {
+                if (path[i]->forward[i] == realTarget)
+                    path[i]->forward[i] = realTarget->forward[i];
+            }
+            delete realTarget;
+        }
+        //fix the forward vector
+        while (currentLevel > 0 && sentinel->forward[currentLevel] == nullptr)
+            currentLevel--;
     }
 
+    //Time o(n) => (revers and get the first n IDPlayers )
     vector<int> getTopN(int n) override {
-        // TODO: Return top N player IDs in descending score order
-        return {};
+        Node * cur = sentinel->forward[0];
+        vector<int> topPlayers;
+        while (cur != nullptr && (int)topPlayers.size() < n) {
+            topPlayers.push_back(cur->PlayerID);
+            cur = cur->forward[0];
+        }
+        return topPlayers;
+    }
+    //searching using Score take time o(log n)
+    vector<int> searchUsingScore(int scr) {
+        vector<int> playerIDs;
+        Node* cur = sentinel;
+        for (int lvl = maxLevel; lvl >= 0; --lvl) {
+            while (cur->forward[lvl] && cur->forward[lvl]->score > scr) {
+                cur = cur->forward[lvl];
+            }
+        }
+        Node* node = cur->forward[0];
+        while (node && node->score == scr) {
+            playerIDs.push_back(node->PlayerID);
+            node = node->forward[0];
+        }
+        return playerIDs;
     }
 };
 
@@ -394,11 +517,48 @@ long long WorldNavigator::minBribeCost(int n, int m, long long goldRate, long lo
     return -1;
 }
 string WorldNavigator::sumMinDistancesBinary(int n, vector<vector<int>>& roads) {
-    // TODO: Implement All-Pairs Shortest Path (Floyd-Warshall)
-    // Sum all shortest distances between unique pairs (i < j)
-    // Return the sum as a binary string
-    // Hint: Handle large numbers carefully
-    return "0";
+    const long long INF = (1LL << 60);
+    unsigned long long total = 0;
+    string bits;
+    vector<vector<long long>> dist(n, vector<long long>(n, INF));
+    for(int i =0 ;i<n ; i++) {
+        dist[i][i] = 0;
+    }
+
+    // fill the dist with roads inputs
+    for(auto &road : roads) {
+        int from = road[0];
+        int to = road[1];
+        long long newdist = road[2];
+        dist[from][to] = min(dist[from][to],newdist);
+    }
+
+    //Floyd–Warshall
+    for(int k = 0; k < n; k++) {
+        for(int i = 0;i < n ;i++) {
+            if (dist[i][k] == INF) continue;
+            for(int j =0 ;j< n ; j++) {
+                if (dist[k][j] == INF) continue;
+                dist[i][j] = min(dist[i][j],dist[i][k]+ dist[k][j]);
+            }
+        }
+    }
+    // sum of unique
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (dist[i][j] < INF)
+                total += dist[i][j];
+        }
+    }
+    cout<<total<<endl;
+    //convert to binarey
+    if (total == 0) return "0";
+    while (total > 0) {
+        bits.push_back((total & 1) ? '1' : '0');
+        total >>= 1;
+    }
+    reverse(bits.begin(), bits.end());
+    return bits;
 }
 
 // =========================================================
