@@ -583,11 +583,19 @@ int InventorySystem::maximizeCarryValue(int capacity, vector<pair<int, int>>& it
 }
 
 long long InventorySystem::countStringPossibilities(string s) {
-    // TODO: Implement string decoding DP
-    // Rules: "uu" can be decoded as "w" or "uu"
-    //        "nn" can be decoded as "m" or "nn"
-    // Count total possible decodings
-    return 0;
+    int n = s.length();
+    if (n == 0) return 1;
+    vector<long long> dp(n + 1, 0);
+    dp[0] = 1;
+    if (n >= 1) dp[1] = 1;
+    for (int i = 2; i <= n; i++) {
+        dp[i] = dp[i - 1];
+        char c1 = s[i - 2], c2 = s[i - 1];
+        if ((c1 == 'u' && c2 == 'u') || (c1 == 'n' && c2 == 'n')) {
+            dp[i] += dp[i - 2];
+        }
+    }
+    return dp[n];
 }
 
 // =========================================================
@@ -737,11 +745,38 @@ string WorldNavigator::sumMinDistancesBinary(int n, vector<vector<int>>& roads) 
 // =========================================================
 
 int ServerKernel::minIntervals(vector<char>& tasks, int n) {
-    // TODO: Implement task scheduler with cooling time
-    // Same task must wait 'n' intervals before running again
-    // Return minimum total intervals needed (including idle time)
-    // Hint: Use greedy approach with frequency counting
-    return 0;
+    if (tasks.empty()) return 0;
+    map<char, int> freqMap;
+    for (char task : tasks) {
+        freqMap[task]++;
+    }
+    priority_queue<int> pq;
+    for (auto const& [task, count] : freqMap) {
+        pq.push(count);
+    }
+    int time = 0;
+    while (!pq.empty()) {
+        int cycle_time = 0;
+        vector<int> temp_list;
+        while (cycle_time <= n) {
+            if (!pq.empty()) {
+                int count = pq.top();
+                pq.pop();
+                if (count > 1) {
+                    temp_list.push_back(count - 1);
+                }
+            }
+            time++;
+            cycle_time++;
+            if (pq.empty() && temp_list.empty()) {
+                break;
+            }
+        }
+        for (int count : temp_list) {
+            pq.push(count);
+        }
+    }
+    return time;
 }
 
 // =========================================================
