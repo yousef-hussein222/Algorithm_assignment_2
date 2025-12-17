@@ -275,6 +275,7 @@ private:
         y->right = x;
         x->parent = y;
     }
+
     void leftRotate(RBNode* x)
     {
         RBNode* y = x->right;
@@ -301,6 +302,51 @@ private:
         y->left = x;
         x->parent = y;
     }
+
+    void fixInsert(RBNode* newNode) {
+        while(newNode != root && newNode->parent->color == 'R') {
+
+            if(newNode->parent == newNode->parent->parent->left) {
+                RBNode* y = newNode->parent->parent->right;
+                if(y && y->color == 'R') {
+                    newNode->parent->color = 'B';
+                    y->color = 'B';
+                    newNode->parent->parent->color = 'R';
+                    newNode = newNode->parent->parent;
+                }
+                else {
+                    if(newNode == newNode->parent->right) {
+                        newNode = newNode->parent;
+                        leftRotate(newNode);
+                    }
+                    newNode->parent->parent->color = 'R';
+                    newNode->parent->color = 'B';
+                    rightRotate(newNode->parent->parent);
+                }
+            }
+            else {
+                RBNode* y = newNode->parent->parent->left;
+                if(y && y->color == 'R') {
+                    newNode->parent->color = 'B';
+                    y->color = 'B';
+                    newNode->parent->parent->color = 'R';
+                    newNode = newNode->parent->parent;
+                }
+                else {
+                    if(newNode == newNode->parent->left) {
+                        newNode = newNode->parent;
+                        rightRotate(newNode);
+                    }
+                    newNode->parent->parent->color = 'R';
+                    newNode->parent->color = 'B';
+                    leftRotate(newNode->parent->parent);
+                }
+            }
+        }
+        root->color = 'B';
+    }
+
+    // --------------------------------------------------------------
     RBNode* search(RBNode* node, int id) {
         while (node) {
             if (id < node->id) node = node->left;
@@ -414,65 +460,37 @@ public:
             RBNode* prev = nullptr;
             while(curr != nullptr) {
                 prev = curr;
-                if(newNode->id < curr->id) {
+                if(newNode->price < curr->price) {
                     curr = curr->left;
                 }
-                else if(newNode->id > curr->id) {
+                else if(newNode->price > curr->price) {
                     curr = curr->right;
                 }
                 else {
-                    cout << "Not allowing duplicate IDs\n";
-                    break;
+                    if(newNode->id < curr->id) {
+                        curr = curr->left;
+                    }
+                    else {
+                        curr = curr->right;
+                    }
                 }
             }
             newNode->parent = prev;
-            if(newNode->id < prev->id) {
+            if(newNode->price < prev->price) {
                 prev->left = newNode;
             }
-            else {
+            else if (newNode->price > prev->price){
                 prev->right = newNode;
             }
-
-            while(newNode != root && newNode->parent->color == 'R') {
-
-                if(newNode->parent == newNode->parent->parent->left) {
-                    RBNode* y = newNode->parent->parent->right;
-                    if(y && y->color == 'R') {
-                        newNode->parent->color = 'B';
-                        y->color = 'B';
-                        newNode->parent->parent->color = 'R';
-                        newNode = newNode->parent->parent;
-                    }
-                    else {
-                        if(newNode == newNode->parent->right) {
-                            newNode = newNode->parent;
-                            leftRotate(newNode);
-                        }
-                        newNode->parent->parent->color = 'R';
-                        newNode->parent->color = 'B';
-                        rightRotate(newNode->parent->parent);
-                    }
+            else {
+                if(newNode->id < prev->id) {
+                    prev->left = newNode;
                 }
                 else {
-                    RBNode* y = newNode->parent->parent->left;
-                    if(y && y->color == 'R') {
-                        newNode->parent->color = 'B';
-                        y->color = 'B';
-                        newNode->parent->parent->color = 'R';
-                        newNode = newNode->parent->parent;
-                    }
-                    else {
-                        if(newNode == newNode->parent->left) {
-                            newNode = newNode->parent;
-                            rightRotate(newNode);
-                        }
-                        newNode->parent->parent->color = 'R';
-                        newNode->parent->color = 'B';
-                        leftRotate(newNode->parent->parent);
-                    }
+                    prev->right = newNode;
                 }
             }
-            root->color = 'B';
+            fixInsert(newNode);
         }
     }
 
