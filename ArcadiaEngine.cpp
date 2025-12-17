@@ -27,14 +27,19 @@ private:
     // TODO: Define your data structures here
     // Hint: You'll need a hash table with double hashing collision resolution
     const int TABLE_SIZE = 101;
-    vector<pair<int, string>> table;
+    struct Entry {
+        int key;
+        string value;
+        bool isOccupied;
+        bool isDeleted;
+
+        Entry() : key(-1), value(""), isOccupied(false), isDeleted(false) {}
+    };
+    vector<Entry> table;
 public:
     ConcretePlayerTable() {
         // TODO: Initialize your hash table
         table.resize(TABLE_SIZE);
-        for (int i = 0; i < TABLE_SIZE; i++) {
-            table[i].first = -1;
-        }
     }
 
     int h1(const int key) const {
@@ -51,12 +56,21 @@ public:
 
         for (int i = 0; i < TABLE_SIZE;i++) {
             const int idx = (h1(playerID) + i * h2(playerID)) % TABLE_SIZE;
-            if (table[idx].first == -1) {
-                table[idx].first = playerID;
-                table[idx].second = name;
+            if (!table[idx].isOccupied || table[idx].isDeleted) {
+                table[idx].key = playerID;
+                table[idx].value = name;
+                table[idx].isOccupied = true;
+                table[idx].isDeleted = false;
+                return;
+            }
+
+            if (table[idx].key == playerID) {
+                table[idx].value = name;
                 return;
             }
         }
+
+        throw runtime_error("Table is full");
     }
 
     string search(int playerID) override {
@@ -65,12 +79,13 @@ public:
 
         for (int i = 0;i < TABLE_SIZE; i++) {
             const int idx = (h1(playerID) + i * h2(playerID)) % TABLE_SIZE;
-            if (table[idx].first == playerID) {
-                return table[idx].second;
+            if (!table[idx].isOccupied && !table[idx].isDeleted) {
+                return "";
             }
 
-            if (table[idx].first == -1) {
-                break;
+            if (table[idx].isOccupied && !table[idx].isDeleted &&
+                table[idx].key == playerID) {
+                return table[idx].value;
             }
         }
 
