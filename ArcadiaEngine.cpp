@@ -1,5 +1,4 @@
 // ArcadiaEngine.cpp - STUDENT TEMPLATE
-// TODO: Implement all the functions below according to the assignment requirements
 
 #include "ArcadiaEngine.h"
 #include <algorithm>
@@ -24,7 +23,6 @@ using namespace std;
 
 class ConcretePlayerTable : public PlayerTable {
 private:
-    // TODO: Define your data structures here
     // Hint: You'll need a hash table with double hashing collision resolution
     const int TABLE_SIZE = 101;
     struct Entry {
@@ -38,7 +36,6 @@ private:
     vector<Entry> table;
 public:
     ConcretePlayerTable() {
-        // TODO: Initialize your hash table
         table.resize(TABLE_SIZE);
     }
 
@@ -51,7 +48,6 @@ public:
     }
 
     void insert(int playerID, string name) override {
-        // TODO: Implement double hashing insert
         // Remember to handle collisions using h1(key) + i * h2(key)
 
         for (int i = 0; i < TABLE_SIZE;i++) {
@@ -74,7 +70,6 @@ public:
     }
 
     string search(int playerID) override {
-        // TODO: Implement double hashing search
         // Return "" if player not found
 
         for (int i = 0;i < TABLE_SIZE; i++) {
@@ -97,7 +92,6 @@ public:
 
 class ConcreteLeaderboard : public Leaderboard {
 private:
-    // TODO: Define your skip list node structure and necessary variables
     struct  Node {
         int score;
         int PlayerID;
@@ -247,8 +241,6 @@ public:
 
 class ConcreteAuctionTree : public AuctionTree {
 private:
-    // TODO: Define your Red-Black Tree node structure
-    // Hint: Each node needs: id, price, color, left, right, parent pointers
     struct RBNode {
         int id,price;
         char color;
@@ -362,13 +354,12 @@ private:
     }
 
     // --------------------------------------------------------------
-    RBNode* search(RBNode* node, int id) {
-        while (node) {
-            if (id < node->id) node = node->left;
-            else if (id > node->id) node = node->right;
-            else return node;
-        }
-        return nullptr;
+    RBNode* searchById(RBNode* node, int id) {
+        if (!node) return nullptr;
+        if (node->id == id) return node;
+        RBNode* leftSearch = searchById(node->left, id);
+        if (leftSearch) return leftSearch;
+        return searchById(node->right, id);
     }
 
     RBNode* minimum(RBNode* node) {
@@ -387,77 +378,84 @@ private:
         return p;
     }
 
+    void transplant(RBNode* u, RBNode* v) {
+        if (!u->parent) {
+            root = v;
+        } else if (u == u->parent->left) {
+            u->parent->left = v;
+        } else {
+            u->parent->right = v;
+        }
+        if (v) v->parent = u->parent;
+    }
+
         // -------------------- delete fixup --------------------
-    void deleteFixup(RBNode* node) {
-    while (node != root && node->color == 'B') {
-        RBNode* parentNode = node->parent;
+    void deleteFixup(RBNode* x) {
+        while (x != root && x && x->color == 'B') {
+            if (x == x->parent->left) {
+                RBNode* w = x->parent->right;  // sibling
 
-        if (parentNode && node == parentNode->left) {
-            RBNode* siblingNode = parentNode->right;
-
-            if (siblingNode && siblingNode->color == 'R') {
                 // Case 1: sibling is red
-                siblingNode->color = 'B';
-                parentNode->color = 'R';
-                leftRotate(parentNode);
-                siblingNode = parentNode->right;
-            }
-
-            if ((!siblingNode || !siblingNode->left || siblingNode->left->color == 'B') &&
-                (!siblingNode || !siblingNode->right || siblingNode->right->color == 'B')) {
-                // Case 2: sibling black, both children black
-                if (siblingNode) siblingNode->color = 'R';
-                node = parentNode;
-            } else {
-                if (!siblingNode || !siblingNode->right || siblingNode->right->color == 'B') {
-                    // Case 3: sibling black, left child red, right child black
-                    if (siblingNode && siblingNode->left) siblingNode->left->color = 'B';
-                    if (siblingNode) siblingNode->color = 'R';
-                    if (siblingNode) rightRotate(siblingNode);
-                    siblingNode = parentNode->right;
+                if (w && w->color == 'R') {
+                    w->color = 'B';
+                    x->parent->color = 'R';
+                    leftRotate(x->parent);
+                    w = x->parent->right;
                 }
-                // Case 4: sibling black, right child red
-                if (siblingNode) siblingNode->color = parentNode->color;
-                parentNode->color = 'B';
-                if (siblingNode && siblingNode->right) siblingNode->right->color = 'B';
-                leftRotate(parentNode);
-                node = root;
-            }
-        } else if (parentNode) { //symmetric: node is right child
-            RBNode* siblingNode = parentNode->left;
 
-            if (siblingNode && siblingNode->color == 'R') {
-                // Case 1 mirror: sibling red
-                siblingNode->color = 'B';
-                parentNode->color = 'R';
-                rightRotate(parentNode);
-                siblingNode = parentNode->left;
-            }
-
-            if ((!siblingNode || !siblingNode->left || siblingNode->left->color == 'B') &&
-                (!siblingNode || !siblingNode->right || siblingNode->right->color == 'B')) {
-                // Case 2 mirror: sibling black, both children black
-                if (siblingNode) siblingNode->color = 'R';
-                node = parentNode;
-            } else {
-                if (!siblingNode || !siblingNode->left || siblingNode->left->color == 'B') {
-                    // Case 3 mirror: sibling black, right child red, left child black
-                    if (siblingNode && siblingNode->right) siblingNode->right->color = 'B';
-                    if (siblingNode) siblingNode->color = 'R';
-                    if (siblingNode) leftRotate(siblingNode);
-                    siblingNode = parentNode->left;
+                // Case 2: sibling is black with two black children
+                if ((!w || !w->left || w->left->color == 'B') && (!w || !w->right || w->right->color == 'B')) {
+                    if (w) w->color = 'R';
+                    x = x->parent;
+                } else {
+                    // Case 3: sibling is black, left child is red, right child is black
+                    if (!w || !w->right || w->right->color == 'B') {
+                        if (w && w->left) w->left->color = 'B';
+                        if (w) w->color = 'R';
+                        rightRotate(w);
+                        w = x->parent->right;
+                    }
+                    // Case 4: sibling is black, right child is red
+                    if (w) w->color = x->parent->color;
+                    x->parent->color = 'B';
+                    if (w && w->right) w->right->color = 'B';
+                    leftRotate(x->parent);
+                    x = root;
                 }
-                // Case 4 mirror: sibling black, left child red
-                if (siblingNode) siblingNode->color = parentNode->color;
-                parentNode->color = 'B';
-                if (siblingNode && siblingNode->left) siblingNode->left->color = 'B';
-                rightRotate(parentNode);
-                node = root;
+            } else {  // Mirror cases when x is right child
+                RBNode* w = x->parent->left;  // sibling
+
+                // Case 1: sibling is red
+                if (w && w->color == 'R') {
+                    w->color = 'B';
+                    x->parent->color = 'R';
+                    rightRotate(x->parent);
+                    w = x->parent->left;
+                }
+
+                // Case 2: sibling is black with two black children
+                if ((!w || !w->right || w->right->color == 'B') && (!w || !w->left || w->left->color == 'B')) {
+                    if (w) w->color = 'R';
+                    x = x->parent;
+                } else {
+                    // Case 3: sibling is black, right child is red, left child is black
+                    if (!w || !w->left || w->left->color == 'B') {
+                        if (w && w->right) w->right->color = 'B';
+                        if (w) w->color = 'R';
+                        leftRotate(w);
+                        w = x->parent->left;
+                    }
+                    // Case 4: sibling is black, left child is red
+                    if (w) w->color = x->parent->color;
+                    x->parent->color = 'B';
+                    if (w && w->left) w->left->color = 'B';
+                    rightRotate(x->parent);
+                    x = root;
+                }
             }
         }
+        if (x) x->color = 'B';
     }
-    if (node) node->color = 'B';
-}
 
 public:
     ConcreteAuctionTree() {
@@ -510,47 +508,51 @@ public:
     }
 
     void deleteItem(int itemID) override {
-        RBNode* nodeToDelete = search(root, itemID);
-        if (!nodeToDelete) return;
+        RBNode* z = searchById(root, itemID);
+        if (!z) return;
 
-        RBNode* nodeToSplice = nodeToDelete;
-        RBNode* childNode = nullptr;
-        char originalColor = nodeToSplice->color;
-        bool usedTemporaryNIL = false;
+        RBNode* y = z;
+        RBNode* x;
+        char yOriginalColor = y->color;
 
-        if (nodeToDelete->left && nodeToDelete->right) {
-            nodeToSplice = successor(nodeToDelete);
-            nodeToDelete->id = nodeToSplice->id;
-            nodeToDelete->price = nodeToSplice->price;
-            originalColor = nodeToSplice->color;
-        }
+        if (!z->left) {
+            // Case 1: z has no left child
+            x = z->right;
+            transplant(z, z->right);
+        } else if (!z->right) {
+            // Case 2: z has no right child
+            x = z->left;
+            transplant(z, z->left);
+        } else {
+            // Case 3: z has two children
+            // Find successor (minimum in right subtree)
+            y = minimum(z->right);
+            yOriginalColor = y->color;
+            x = y->right;
 
-        childNode = nodeToSplice->left ? nodeToSplice->left : nodeToSplice->right;
-
-        if (!childNode) {
-            childNode = new RBNode(0, 0, 'B');
-            usedTemporaryNIL = true;
-        }
-
-        if (!nodeToSplice->parent) root = childNode;
-        else if (nodeToSplice == nodeToSplice->parent->left)
-            nodeToSplice->parent->left = childNode;
-        else
-            nodeToSplice->parent->right = childNode;
-
-        if (childNode) childNode->parent = nodeToSplice->parent;
-
-        if (originalColor == 'B') deleteFixup(childNode);
-
-        if (usedTemporaryNIL && childNode) {
-            if (childNode->parent) {
-                if (childNode == childNode->parent->left) childNode->parent->left = nullptr;
-                else childNode->parent->right = nullptr;
+            if (y->parent == z) {
+                // Successor is direct child of z
+                if (x) x->parent = y;
+            } else {
+                // Successor is not direct child of z
+                transplant(y, y->right);
+                y->right = z->right;
+                y->right->parent = y;
             }
-            delete childNode;
+
+            // Replace z with y
+            transplant(z, y);
+            y->left = z->left;
+            y->left->parent = y;
+            y->color = z->color;
         }
 
-        delete nodeToSplice;
+        delete z;
+
+        // Fix Red-Black Tree properties if a black node was removed
+        if (yOriginalColor == 'B') {
+            deleteFixup(x);
+        }
     }
 };
 
@@ -680,7 +682,6 @@ bool WorldNavigator::pathExists(int n, vector<vector<int>>& edges, int source, i
 
 long long WorldNavigator::minBribeCost(int n, int m, long long goldRate, long long silverRate,
                                        vector<vector<int>>& roadData) {
-    // TODO: Implement Minimum Spanning Tree (Kruskal's or Prim's)
     // roadData[i] = {u, v, goldCost, silverCost}
     // Total cost = goldCost * goldRate + silverCost * silverRate
     // Return -1 if graph cannot be fully connected
