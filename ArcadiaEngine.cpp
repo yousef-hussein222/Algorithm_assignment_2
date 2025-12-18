@@ -618,6 +618,7 @@ int InventorySystem::maximizeCarryValue(int capacity, vector<pair<int, int>>& it
 }
 
 long long InventorySystem::countStringPossibilities(string s) {
+    const long long MOD = 1e9 + 7;
     int n = s.length();
     if (n == 0) return 1;
     vector<long long> dp(n + 1, 0);
@@ -627,7 +628,7 @@ long long InventorySystem::countStringPossibilities(string s) {
         dp[i] = dp[i - 1];
         char c1 = s[i - 2], c2 = s[i - 1];
         if ((c1 == 'u' && c2 == 'u') || (c1 == 'n' && c2 == 'n')) {
-            dp[i] += dp[i - 2];
+            dp[i] = (dp[i] + dp[i-2]) % MOD;
         }
     }
     return dp[n];
